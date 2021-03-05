@@ -187,7 +187,7 @@ def convert_examples_to_features(examples, max_seq_len, tokenizer,
         intent_label_id = int(example.intent_label)
 
         if ex_index < 5:
-            print('*** Example ***')
+            print('\n*** Example ***')
             print('guid: %s' % example.guid)
             print('tokens: %s' % ' '.join([str(x) for x in tokens]))
             print('input_ids: %s' % ' '.join([str(x) for x in input_ids]))
