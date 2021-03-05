@@ -29,6 +29,7 @@ if __name__ == '__main__':
     # data
     parser.add_argument('--task', default='snips', type=str, help='The name of the task to train')
     parser.add_argument('--data_dir', default='./data', type=str, help='The input data dir')
+    parser.add_argument("--model_dir", default='./data/models/snips_teacher', type=str, help="Path to save, load model")
     parser.add_argument('--ignore_index', default=0, type=int,
                         help='Specifies a target value that is ignored and does not contribute to the input gradient')
     parser.add_argument('--max_seq_len', default=50, type=int,
