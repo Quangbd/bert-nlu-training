@@ -1,19 +1,31 @@
 import argparse
-from utils import set_seed
+
 from trainer import Trainer
+from utils import init_logger, set_seed
 from data import load_and_cache_examples
 from transformers import BertTokenizer
 
 
 def main(args):
+    init_logger()
     set_seed(args)
-    tokenizer = BertTokenizer.from_pretrained('data/models/bert-base-uncased')
-    train_dataset = load_and_cache_examples(args, tokenizer, mode='train')
-    dev_dataset = load_and_cache_examples(args, tokenizer, mode='dev')
-    test_dataset = load_and_cache_examples(args, tokenizer, mode='test')
+    if args.stage == '2.1':
+        tokenizer = BertTokenizer.from_pretrained(args.teacher_model, do_lower_case=True)
+    elif args.stage == '2.2':
+        tokenizer = BertTokenizer.from_pretrained(args.student_model, do_lower_case=True)
 
-    trainer = Trainer(args, train_dataset, dev_dataset, test_dataset)
-    trainer.train()
+    train_dataset = load_and_cache_examples(args, tokenizer, mode="train")
+    dev_dataset = load_and_cache_examples(args, tokenizer, mode="dev")
+    test_dataset = load_and_cache_examples(args, tokenizer, mode="test")
+
+    trainer = Trainer(args, train_dataset, dev_dataset,test_dataset)
+
+    if args.do_train:
+        trainer.train()
+
+    if args.do_eval:
+        trainer.load_model()
+        trainer.evaluate("test")
 
 
 if __name__ == '__main__':
@@ -24,12 +36,15 @@ if __name__ == '__main__':
     parser.add_argument('--bert_path', type=str, default='data/models/bert-base-uncased',
                         help='Path to save, load model')
 
-    parser.add_argument("--model_type", default="bert", type=str)
 
     # data
     parser.add_argument('--task', default='snips', type=str, help='The name of the task to train')
     parser.add_argument('--data_dir', default='./data', type=str, help='The input data dir')
     parser.add_argument("--model_dir", default='./data/models/snips_teacher', type=str, help="Path to save, load model")
+    parser.add_argument("--output_dir", default='./data/models/snips_teacher', type=str, help="Path to save, load model")
+    parser.add_argument("--teacher_model",default='./data/models/bert-base-uncased',type=str,help="The teacher model dir.")
+    parser.add_argument("--student_model",default='./data/models/snips_student', type=str, help="The student model dir.")
+
     parser.add_argument('--ignore_index', default=0, type=int,
                         help='Specifies a target value that is ignored and does not contribute to the input gradient')
     parser.add_argument('--max_seq_len', default=50, type=int,
@@ -63,5 +78,7 @@ if __name__ == '__main__':
                         type=float,
                         help="Proportion of training to perform linear learning rate warmup for. "
                              "E.g., 0.1 = 10%% of training.")
+
+    parser.add_argument("--stage", default='2.1', help="stage 2.1 or 2.2")
 
     main(parser.parse_args())

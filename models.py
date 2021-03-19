@@ -52,6 +52,7 @@ PRETRAINED_MODEL_ARCHIVE_MAP = {
 BERT_CONFIG_NAME = 'bert_config.json'
 TF_WEIGHTS_NAME = 'model.ckpt'
 
+logger = logging.getLogger(__name__)
 
 def load_tf_weights_in_bert(model, tf_checkpoint_path):
     """ Load tf checkpoints in a pytorch model
@@ -140,7 +141,8 @@ def swish(x):
 try:
     from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
 except ImportError:
-    print("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
+    logger.info(
+        "Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
 
     class BertLayerNorm(nn.Module):
         def __init__(self, hidden_size, eps=1e-12):
@@ -234,7 +236,7 @@ class BertConfig(object):
 
     def __init__(self,
                  vocab_size_or_config_json_file,
-                 embedding_size=128,
+                 embedding_size=64,
                  hidden_size=768,
                  num_hidden_layers=12,
                  num_attention_heads=12,
@@ -680,7 +682,7 @@ class BertPreTrainedModel(nn.Module):
             pretrained_model_name_or_path, CONFIG_NAME)
         config = BertConfig.from_json_file(resolved_config_file)
 
-        print("Model config {}".format(config))
+        logger.info("Model config {}".format(config))
         model = cls(config, *inputs, **kwargs)
         return model
 
@@ -719,14 +721,14 @@ class BertPreTrainedModel(nn.Module):
         # Load config
         config_file = os.path.join(pretrained_model_name_or_path, CONFIG_NAME)
         config = BertConfig.from_json_file(config_file)
-        print("Model config {}".format(config))
+        logger.info("Model config {}".format(config))
         # Instantiate model.
 
         model = cls(config, *inputs, **kwargs)
         if state_dict is None and not from_tf:
             weights_path = os.path.join(
                 pretrained_model_name_or_path, WEIGHTS_NAME)
-            print("Loading model {}".format(weights_path))
+            logger.info("Loading model {}".format(weights_path))
             state_dict = torch.load(weights_path, map_location='cpu')
 
         if from_tf:
@@ -749,6 +751,11 @@ class BertPreTrainedModel(nn.Module):
         for old_key, new_key in zip(old_keys, new_keys):
             state_dict[new_key] = state_dict.pop(old_key)
 
+
+        model_keys = model.state_dict().keys()
+        for t in list(state_dict.keys()):
+            if t not in model_keys:
+                del state_dict[t]
         missing_keys = []
         unexpected_keys = []
         error_msgs = []
@@ -771,14 +778,126 @@ class BertPreTrainedModel(nn.Module):
         if not hasattr(model, 'bert') and any(s.startswith('bert.') for s in state_dict.keys()):
             start_prefix = 'bert.'
 
-        print('loading model...')
+        logger.info('loading model...')
         load(model, prefix=start_prefix)
-        print('done!')
+        logger.info('done!')
         if len(missing_keys) > 0:
-            print("Weights of {} not initialized from pretrained model: {}".format(
+            logger.info("Weights of {} not initialized from pretrained model: {}".format(
                 model.__class__.__name__, missing_keys))
         if len(unexpected_keys) > 0:
-            print("Weights from pretrained model not used in {}: {}".format(
+            logger.info("Weights from pretrained model not used in {}: {}".format(
+                model.__class__.__name__, unexpected_keys))
+        if len(error_msgs) > 0:
+            raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
+                model.__class__.__name__, "\n\t".join(error_msgs)))
+
+        return model
+
+    @classmethod
+    def from_pretrained2(cls, pretrained_model_name_or_path, *inputs, **kwargs):
+        """
+        Instantiate a BertPreTrainedModel from a pre-trained model file or a pytorch state dict.
+        Download and cache the pre-trained model file if needed.
+        Params:
+            pretrained_model_name_or_path: either:
+                - a str with the name of a pre-trained model to load selected in the list of:
+                    . `bert-base-uncased`
+                    . `bert-large-uncased`
+                    . `bert-base-cased`
+                    . `bert-large-cased`
+                    . `bert-base-multilingual-uncased`
+                    . `bert-base-multilingual-cased`
+                    . `bert-base-chinese`
+                - a path or url to a pretrained model archive containing:
+                    . `bert_config.json` a configuration file for the model
+                    . `pytorch_model.bin` a PyTorch dump of a BertForPreTraining instance
+                - a path or url to a pretrained model archive containing:
+                    . `bert_config.json` a configuration file for the model
+                    . `model.chkpt` a TensorFlow checkpoint
+            from_tf: should we load the weights from a locally saved TensorFlow checkpoint
+            cache_dir: an optional path to a folder in which the pre-trained models will be cached.
+            state_dict: an optional state dictionnary (collections.OrderedDict object) to use instead of Google pre-trained models
+            *inputs, **kwargs: additional input for the specific Bert class
+                (ex: num_labels for BertForSequenceClassification)
+        """
+        state_dict = kwargs.get('state_dict', None)
+        kwargs.pop('state_dict', None)
+        from_tf = kwargs.get('from_tf', False)
+        kwargs.pop('from_tf', None)
+
+        # Load config
+        config_file = os.path.join(pretrained_model_name_or_path, CONFIG_NAME)
+        config = BertConfig.from_json_file(config_file)
+        logger.info("Model config {}".format(config))
+        # Instantiate model.
+
+        model = cls(config, *inputs, **kwargs)
+        if state_dict is None and not from_tf:
+            weights_path = os.path.join(
+                pretrained_model_name_or_path, WEIGHTS_NAME)
+            logger.info("Loading model {}".format(weights_path))
+            state_dict = torch.load(weights_path, map_location='cpu')
+
+        if from_tf:
+            # Directly load from a TensorFlow checkpoint
+            weights_path = os.path.join(
+                pretrained_model_name_or_path, TF_WEIGHTS_NAME)
+            return load_tf_weights_in_bert(model, weights_path)
+        # Load from a PyTorch state_dict
+        old_keys = []
+        new_keys = []
+        for key in state_dict.keys():
+            new_key = None
+            if 'gamma' in key:
+                new_key = key.replace('gamma', 'weight')
+            if 'beta' in key:
+                new_key = key.replace('beta', 'bias')
+            if new_key:
+                old_keys.append(key)
+                new_keys.append(new_key)
+        for old_key, new_key in zip(old_keys, new_keys):
+            state_dict[new_key] = state_dict.pop(old_key)
+
+        state_dict['bert.embeddings.word_embeddings.weight'] = state_dict['bert.embeddings.word_embeddings.weight'][:,:64]
+        state_dict['bert.embeddings.token_type_embeddings.weight'] = state_dict['bert.embeddings.token_type_embeddings.weight'][:,:64]
+        state_dict['bert.embeddings.position_embeddings.weight'] = state_dict['bert.embeddings.position_embeddings.weight'][:,:64]
+        state_dict['bert.embeddings.LayerNorm.weight'] = state_dict['bert.embeddings.LayerNorm.weight'][:64]
+        state_dict['bert.embeddings.LayerNorm.bias'] = state_dict['bert.embeddings.LayerNorm.bias'][:64]
+
+        model_keys = model.state_dict().keys()
+        for t in list(state_dict.keys()):
+            if t not in model_keys:
+                del state_dict[t]
+        missing_keys = []
+        unexpected_keys = []
+        error_msgs = []
+        # copy state_dict so _load_from_state_dict can modify it
+        metadata = getattr(state_dict, '_metadata', None)
+        state_dict = state_dict.copy()
+        if metadata is not None:
+            state_dict._metadata = metadata
+
+        def load(module, prefix=''):
+            local_metadata = {} if metadata is None else metadata.get(
+                prefix[:-1], {})
+            module._load_from_state_dict(
+                state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs)
+            for name, child in module._modules.items():
+                if child is not None:
+                    load(child, prefix + name + '.')
+
+        start_prefix = ''
+        if not hasattr(model, 'bert') and any(s.startswith('bert.') for s in state_dict.keys()):
+            start_prefix = 'bert.'
+
+        logger.info('loading model...')
+        load(model, prefix=start_prefix)
+        logger.info('done!')
+        if len(missing_keys) > 0:
+            logger.info("Weights of {} not initialized from pretrained model: {}".format(
+                model.__class__.__name__, missing_keys))
+        if len(unexpected_keys) > 0:
+            logger.info("Weights from pretrained model not used in {}: {}".format(
                 model.__class__.__name__, unexpected_keys))
         if len(error_msgs) > 0:
             raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
@@ -1243,61 +1362,3 @@ class JointTinyBert2(BertPreTrainedModel):
             sequence_output = tmp
 
         return intent_logits, slot_logits, att_output, sequence_output
-
-
-class JointBERT(BertPreTrainedModel):
-    def __init__(self, config, args, intent_label_lst, slot_label_lst):
-        super(JointBERT, self).__init__(config)
-        self.args = args
-        self.num_intent_labels = len(intent_label_lst)
-        self.num_slot_labels = len(slot_label_lst)
-        self.bert = BertModel(config=config)  # Load pretrained bert
-
-        self.intent_classifier = nn.Linear(config.hidden_size, self.num_intent_labels)
-        self.slot_classifier = nn.Linear(config.hidden_size, self.num_slot_labels)
-
-        if args.use_crf:
-            self.crf = CRF(num_tags=self.num_slot_labels, batch_first=True)
-
-        self.apply(self.init_bert_weights)
-
-    def forward(self, input_ids, attention_mask, token_type_ids, intent_label_ids, slot_labels_ids):
-        sequence_output, att_output, pooled_output = self.bert(input_ids, token_type_ids, attention_mask,
-                                                               output_all_encoded_layers=True, output_att=True)
-
-        intent_logits = self.intent_classifier(pooled_output)
-        slot_logits = self.slot_classifier(sequence_output[-1])
-
-        total_loss = 0
-        # 1. Intent Softmax
-        if intent_label_ids is not None:
-            if self.num_intent_labels == 1:
-                intent_loss_fct = nn.MSELoss()
-                intent_loss = intent_loss_fct(intent_logits.view(-1), intent_label_ids.view(-1))
-            else:
-                intent_loss_fct = nn.CrossEntropyLoss()
-                intent_loss = intent_loss_fct(intent_logits.view(-1, self.num_intent_labels), intent_label_ids.view(-1))
-            total_loss += intent_loss
-
-        # 2. Slot Softmax
-        if slot_labels_ids is not None:
-            if self.args.use_crf:
-                slot_loss = self.crf(slot_logits, slot_labels_ids, mask=attention_mask.byte(), reduction='mean')
-                slot_loss = -1 * slot_loss  # negative log-likelihood
-            else:
-                slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.args.ignore_index)
-                # Only keep active parts of the loss
-                if attention_mask is not None:
-                    active_loss = attention_mask.view(-1) == 1
-                    active_logits = slot_logits.view(-1, self.num_slot_labels)[active_loss]
-                    active_labels = slot_labels_ids.view(-1)[active_loss]
-                    slot_loss = slot_loss_fct(active_logits, active_labels)
-                else:
-                    slot_loss = slot_loss_fct(slot_logits.view(-1, self.num_slot_labels), slot_labels_ids.view(-1))
-            total_loss += self.args.slot_loss_coef * slot_loss
-
-        outputs = ((intent_logits, slot_logits),)  # add hidden states and attention if they are here
-
-        outputs = (total_loss,) + outputs
-
-        return outputs  # (loss), logits, (hidden_states), (attentions) # Logits is a tuple of intent and slot logits

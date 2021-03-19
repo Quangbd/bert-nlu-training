@@ -1,8 +1,15 @@
 import os
 import torch
 import random
+import logging
 import numpy as np
 from seqeval.metrics import precision_score, recall_score, f1_score
+
+
+def init_logger():
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                        datefmt='%m/%d/%Y %H:%M:%S',
+                        level=logging.INFO)
 
 
 def get_intent_labels(args):
