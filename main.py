@@ -12,7 +12,7 @@ def main(args):
     if args.stage == '2.1':
         tokenizer = BertTokenizer.from_pretrained(args.teacher_model, do_lower_case=True)
     elif args.stage == '2.2':
-        tokenizer = BertTokenizer.from_pretrained(args.student_model, do_lower_case=True)
+        tokenizer = BertTokenizer.from_pretrained(args.teacher_model, do_lower_case=True)
 
     train_dataset = load_and_cache_examples(args, tokenizer, mode="train")
     dev_dataset = load_and_cache_examples(args, tokenizer, mode="dev")
