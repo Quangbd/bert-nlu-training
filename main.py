@@ -44,6 +44,7 @@ if __name__ == '__main__':
     parser.add_argument("--output_dir", default='./data/models/snips_teacher', type=str, help="Path to save, load model")
     parser.add_argument("--teacher_model",default='./data/models/bert-base-uncased',type=str,help="The teacher model dir.")
     parser.add_argument("--student_model",default='./data/models/snips_student', type=str, help="The student model dir.")
+    parser.add_argument("--tinybert", default='./data/models/tinybert', type=str,help="The tiny model dir.")
 
     parser.add_argument('--ignore_index', default=0, type=int,
                         help='Specifies a target value that is ignored and does not contribute to the input gradient')
@@ -80,5 +81,8 @@ if __name__ == '__main__':
                              "E.g., 0.1 = 10%% of training.")
 
     parser.add_argument("--stage", default='2.1', help="stage 2.1 or 2.2")
+    parser.add_argument("--do_train", default=True, help="Whether to run training.")
+    parser.add_argument("--pred_distill", action='store_true', help="Whether to distill prediction")
+    parser.add_argument('--eval_step',type=int,default=50)
 
     main(parser.parse_args())
