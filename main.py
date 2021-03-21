@@ -41,7 +41,7 @@ if __name__ == '__main__':
     parser.add_argument('--task', default='snips', type=str, help='The name of the task to train')
     parser.add_argument('--data_dir', default='./data', type=str, help='The input data dir')
     parser.add_argument("--model_dir", default='./data/models/snips_teacher', type=str, help="Path to save, load model")
-    parser.add_argument("--output_dir", default='./data/models/snips_teacher', type=str, help="Path to save, load model")
+    parser.add_argument("--output_dir", default='./data/models/snips_student', type=str, help="Path to save, load model")
     parser.add_argument("--teacher_model",default='./data/models/bert-base-uncased',type=str,help="The teacher model dir.")
     parser.add_argument("--student_model",default='./data/models/snips_student', type=str, help="The student model dir.")
     parser.add_argument("--tinybert", default='./data/models/tinybert', type=str,help="The tiny model dir.")
@@ -82,7 +82,9 @@ if __name__ == '__main__':
 
     parser.add_argument("--stage", default='2.1', help="stage 2.1 or 2.2")
     parser.add_argument("--do_train", default=True, help="Whether to run training.")
-    parser.add_argument("--pred_distill", action='store_true', help="Whether to distill prediction")
-    parser.add_argument('--eval_step',type=int,default=50)
+    parser.add_argument("--do_eval", default=True, help="Whether to run eval on the test set.")
+    parser.add_argument("--pred_distill", action='store_true', default=True, help="Whether to distill prediction")
+    parser.add_argument('--eval_step',type=int,default=10)
+    parser.add_argument('--temperature',type=float,default=1.)
 
     main(parser.parse_args())
