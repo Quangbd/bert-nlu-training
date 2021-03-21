@@ -80,7 +80,7 @@ if __name__ == '__main__':
                         help="Proportion of training to perform linear learning rate warmup for. "
                              "E.g., 0.1 = 10%% of training.")
 
-    parser.add_argument("--stage", default='2.1', help="stage 2.1 or 2.2")
+    parser.add_argument("--stage", default='2.2', help="stage 2.1 or 2.2")
     parser.add_argument("--do_train", default=True, help="Whether to run training.")
     parser.add_argument("--do_eval", default=True, help="Whether to run eval on the test set.")
     parser.add_argument("--pred_distill", action='store_true', default=True, help="Whether to distill prediction")
