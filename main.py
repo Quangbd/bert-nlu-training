@@ -84,7 +84,7 @@ if __name__ == '__main__':
     parser.add_argument("--do_train", default=True, help="Whether to run training.")
     parser.add_argument("--do_eval", default=True, help="Whether to run eval on the test set.")
     parser.add_argument("--pred_distill", action='store_true', default=True, help="Whether to distill prediction")
-    parser.add_argument('--eval_step',type=int,default=10)
+    parser.add_argument('--eval_step',type=int,default=50)
     parser.add_argument('--temperature',type=float,default=1.)
 
     main(parser.parse_args())
