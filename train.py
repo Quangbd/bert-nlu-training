@@ -319,24 +319,37 @@ class Trainer(object):
         for batch in tqdm(eval_dataloader, desc="Evaluating"):
             batch = tuple(t.to(self.device) for t in batch)
             with torch.no_grad():
-                input_ids, input_mask, segment_ids, intent_label_ids, slot_labels_ids = batch
+                if self.args.stage == '2.0':
+                    inputs = {'input_ids': batch[0],
+                              'attention_mask': batch[1],
+                              'intent_label_ids': batch[3],
+                              'slot_labels_ids': batch[4]}
+                    if self.args.model_type != 'distilbert':
+                        inputs['token_type_ids'] = batch[2]
+                    outputs = model(**inputs)
+                    tmp_eval_loss, (intent_logits, slot_logits) = outputs[:2]
 
-                intent_logits, slot_logits, _, _ = model(input_ids, segment_ids, input_mask)
-                loss_fct = CrossEntropyLoss()
-                slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.args.ignore_index)
-                tmp_intent_eval_loss = loss_fct(intent_logits.view(-1, model.num_intent_labels),
-                                                intent_label_ids.view(-1))
-                if input_mask is not None:
-                    active_loss = input_mask.view(-1) == 1
-                    active_logits = slot_logits.view(-1, model.num_slot_labels)[active_loss]
-                    active_labels = slot_labels_ids.view(-1)[active_loss]
-                    slot_loss = slot_loss_fct(active_logits, active_labels)
+                    eval_loss += tmp_eval_loss.mean().item()
                 else:
-                    slot_loss = slot_loss_fct(slot_logits.view(-1, model.num_slot_labels),
-                                              slot_labels_ids.view(-1))
+                    input_ids, input_mask, segment_ids, intent_label_ids, slot_labels_ids = batch
 
-                eval_loss += tmp_intent_eval_loss.mean().item()
-                eval_loss += slot_loss.mean().item()
+                    intent_logits, slot_logits, _, _ = model(input_ids, segment_ids, input_mask)
+                    loss_fct = CrossEntropyLoss()
+                    slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.args.ignore_index)
+                    tmp_intent_eval_loss = loss_fct(intent_logits.view(-1, model.num_intent_labels),
+                                                    intent_label_ids.view(-1))
+                    if input_mask is not None:
+                        active_loss = input_mask.view(-1) == 1
+                        active_logits = slot_logits.view(-1, model.num_slot_labels)[active_loss]
+                        active_labels = slot_labels_ids.view(-1)[active_loss]
+                        slot_loss = slot_loss_fct(active_logits, active_labels)
+                    else:
+                        slot_loss = slot_loss_fct(slot_logits.view(-1, model.num_slot_labels),
+                                                  slot_labels_ids.view(-1))
+
+                    eval_loss += tmp_intent_eval_loss.mean().item()
+                    eval_loss += slot_loss.mean().item()
+
             nb_eval_steps += 1
 
             # Intent prediction
