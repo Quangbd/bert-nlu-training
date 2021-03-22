@@ -1,6 +1,8 @@
 # BERT NLU Training
 
-## Training teacher model
+## Training
+
+### Teacher model
 
 ```bash
 python train.py --teacher_model ./data/models/bert-base-uncased \
