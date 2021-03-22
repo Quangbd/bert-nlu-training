@@ -18,13 +18,6 @@ init_logger()
 logger = logging.getLogger(__name__)
 
 
-def result_to_file(result, file_name):
-    with open(file_name, "a") as writer:
-        for key in sorted(result.keys()):
-            print("  %s = %s", key, str(result[key]))
-            writer.write("%s = %s\n" % (key, str(result[key])))
-
-
 def soft_cross_entropy(predicts, targets):
     student_likelihood = F.log_softmax(predicts, dim=-1)
     targets_prob = F.softmax(targets, dim=-1)
@@ -158,7 +151,8 @@ class Trainer(object):
             param_optimizer = list(self.student_model.named_parameters())
             no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
             optimizer_grouped_parameters = [
-                {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+                {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
+                 'weight_decay': 0.01},
                 {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}]
 
             schedule = 'warmup_linear'
@@ -274,8 +268,6 @@ class Trainer(object):
                         result['att_loss'] = att_loss
                         result['rep_loss'] = rep_loss
                         result['loss'] = loss
-
-                        result_to_file(result, output_eval_file)
 
                         if not self.args.pred_distill:
                             save_model = True
@@ -447,7 +439,7 @@ class Trainer(object):
 
         try:
             if self.args.stage == '2.0':
-                self.teacher_model = JointBERT.from_pretrained(self.args.model_dir,
+                self.teacher_model = JointBERT.from_pretrained(self.args.output_dir,
                                                                args=self.args,
                                                                intent_label_lst=self.intent_label_lst,
                                                                slot_label_lst=self.slot_label_lst)
