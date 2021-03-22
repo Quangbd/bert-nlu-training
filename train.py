@@ -292,7 +292,7 @@ class Trainer(object):
 
                         self.student_model.train()
 
-    def evaluate(self, mode):
+    def evaluate(self, mode, model):
         if mode == 'test':
             dataset = self.test_dataset
         elif mode == 'dev':
@@ -314,25 +314,25 @@ class Trainer(object):
         out_intent_label_ids = None
         out_slot_labels_ids = None
 
-        self.student_model.eval()
+        model.eval()
 
         for batch in tqdm(eval_dataloader, desc="Evaluating"):
             batch = tuple(t.to(self.device) for t in batch)
             with torch.no_grad():
                 input_ids, input_mask, segment_ids, intent_label_ids, slot_labels_ids = batch
 
-                intent_logits, slot_logits, _, _ = self.student_model(input_ids, segment_ids, input_mask)
+                intent_logits, slot_logits, _, _ = model(input_ids, segment_ids, input_mask)
                 loss_fct = CrossEntropyLoss()
                 slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.args.ignore_index)
-                tmp_intent_eval_loss = loss_fct(intent_logits.view(-1, self.student_model.num_intent_labels),
+                tmp_intent_eval_loss = loss_fct(intent_logits.view(-1, model.num_intent_labels),
                                                 intent_label_ids.view(-1))
                 if input_mask is not None:
                     active_loss = input_mask.view(-1) == 1
-                    active_logits = slot_logits.view(-1, self.student_model.num_slot_labels)[active_loss]
+                    active_logits = slot_logits.view(-1, model.num_slot_labels)[active_loss]
                     active_labels = slot_labels_ids.view(-1)[active_loss]
                     slot_loss = slot_loss_fct(active_logits, active_labels)
                 else:
-                    slot_loss = slot_loss_fct(slot_logits.view(-1, self.student_model.num_slot_labels),
+                    slot_loss = slot_loss_fct(slot_logits.view(-1, model.num_slot_labels),
                                               slot_labels_ids.view(-1))
 
                 eval_loss += tmp_intent_eval_loss.mean().item()
@@ -350,11 +350,7 @@ class Trainer(object):
 
             # Slot prediction
             if slot_preds is None:
-                if self.args.use_crf:
-                    slot_preds = np.array(self.teacher_model.crf.decode(slot_logits))
-                else:
-                    slot_preds = slot_logits.detach().cpu().numpy()
-
+                slot_preds = slot_logits.detach().cpu().numpy()
                 out_slot_labels_ids = slot_labels_ids.detach().cpu().numpy()
                 out_slot_labels_ids = np.append(out_slot_labels_ids, slot_labels_ids.detach().cpu().numpy(), axis=0)
 
@@ -412,13 +408,16 @@ class Trainer(object):
                                                                intent_label_lst=self.intent_label_lst,
                                                                slot_label_lst=self.slot_label_lst)
                 self.teacher_model.to(self.device)
+                logger.info("***** Model Loaded *****")
+                return self.teacher_model
             else:
                 self.student_model = JointTinyBert2.from_pretrained(self.args.output_dir,
                                                                     args=self.args,
                                                                     intent_label_lst=self.intent_label_lst,
                                                                     slot_label_lst=self.slot_label_lst)
                 self.student_model.to(self.device)
-            logger.info("***** Model Loaded *****")
+                logger.info("***** Model Loaded *****")
+                return self.teacher_model
         except:
             raise Exception("Some model files might be missing...")
 
@@ -494,5 +493,5 @@ if __name__ == '__main__':
         trainer.train()
 
     if args.do_eval:
-        trainer.load_model()
-        trainer.evaluate("test")
+        model = trainer.load_model()
+        trainer.evaluate('test', model)
