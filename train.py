@@ -438,7 +438,7 @@ class Trainer(object):
 
         # Save training arguments together with the trained model
         torch.save(self.args, os.path.join(self.args.output_dir, 'training_args.bin'))
-        print("Saving model checkpoint to %s", self.args.model_dir)
+        print("Saving model checkpoint to %s", self.args.output_dir)
 
     def load_model(self):
         # Check whether model exists
