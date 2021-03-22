@@ -133,6 +133,9 @@ def gelu(x):
     """
     return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
 
+def gelu_fast(x):
+    return 0.5 * x * (1.0 + torch.tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)))
+
 
 def swish(x):
     return x * torch.sigmoid(x)
@@ -226,7 +229,7 @@ class HeadAttention(nn.Module):
         return context_layer
 
 
-ACT2FN = {"gelu": gelu, "relu": torch.nn.functional.relu}
+ACT2FN = {"gelu": gelu_fast, "relu": torch.nn.functional.relu}
 NORM = {'layer_norm': BertLayerNorm}
 
 

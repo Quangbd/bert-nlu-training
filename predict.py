@@ -224,7 +224,7 @@ def predict_single_query(pred_config):
 
     # Convert input file to TensorDataset
     pad_token_label_id = args.ignore_index
-    tokenizer = BertTokenizer.from_pretrained(pred_config.model_dir)
+    tokenizer = BertTokenizer.from_pretrained('data/models/bert-base-uncased')
     dataset = convert_input_file_to_tensor_dataset([pred_config.input_query.split()], pred_config, args, tokenizer, pad_token_label_id)
     dataset = tuple(t.to(device) for t in dataset)
 
@@ -232,6 +232,11 @@ def predict_single_query(pred_config):
     input_ids, input_mask, segment_ids,_ = dataset
     intent_logits, slot_logits, _, _ = model(input_ids, segment_ids, input_mask)
 
+    print(input_ids)
+    print(input_mask)
+    print(segment_ids)
+    print(intent_logits)
+    print(slot_logits)
 
     intent_preds = intent_logits.detach().cpu().numpy()
     slot_preds = slot_logits.detach().cpu().numpy()
@@ -267,8 +272,8 @@ if __name__ == "__main__":
     init_logger()
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--input_file", default='data/snips/test/seq.in', type=str, help="Input file for prediction")
-    parser.add_argument("--input_query", default=None, type=str, help="Input query for prediction")
+    parser.add_argument("--input_file", default=None, type=str, help="Input file for prediction")
+    parser.add_argument("--input_query", default='add sabrina salerno to the grime instrumentals playlist', type=str, help="Input query for prediction")
     parser.add_argument("--output_file", default="sample_pred_out.txt", type=str, help="Output file for prediction")
     parser.add_argument("--model_dir", default="./data/models/snips_student_2", type=str, help="Path to save, load model")
 
