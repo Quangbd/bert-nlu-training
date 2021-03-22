@@ -135,7 +135,7 @@ class Trainer(object):
                         global_step += 1
 
                         if self.args.logging_steps > 0 and global_step % self.args.logging_steps == 0:
-                            result = self.evaluate("dev")
+                            result = self.evaluate("dev", self.teacher_model)
 
                             save_model = False
                             if result['slot_f1'] > best_dev_acc:
@@ -268,7 +268,7 @@ class Trainer(object):
 
                         result = {}
                         if self.args.pred_distill:
-                            result = self.evaluate("dev")
+                            result = self.evaluate("dev", self.student_model)
                         result['global_step'] = global_step
                         result['cls_loss'] = cls_loss
                         result['att_loss'] = att_loss
