@@ -352,20 +352,39 @@ class Trainer(object):
 
             nb_eval_steps += 1
 
-            # Intent prediction
-            if intent_preds is None:
-                intent_preds = intent_logits.detach().cpu().numpy()
-                out_intent_label_ids = intent_label_ids.detach().cpu().numpy()
-            else:
-                intent_preds = np.append(intent_preds, intent_logits.detach().cpu().numpy(), axis=0)
-                out_intent_label_ids = np.append(
-                    out_intent_label_ids, intent_label_ids.detach().cpu().numpy(), axis=0)
+            if self.args.stage == '2.0':
+                # Intent prediction
+                if intent_preds is None:
+                    intent_preds = intent_logits.detach().cpu().numpy()
+                    out_intent_label_ids = inputs['intent_label_ids'].detach().cpu().numpy()
+                else:
+                    intent_preds = np.append(intent_preds, intent_logits.detach().cpu().numpy(), axis=0)
+                    out_intent_label_ids = np.append(
+                        out_intent_label_ids, inputs['intent_label_ids'].detach().cpu().numpy(), axis=0)
 
-            # Slot prediction
-            if slot_preds is None:
-                slot_preds = slot_logits.detach().cpu().numpy()
-                out_slot_labels_ids = slot_labels_ids.detach().cpu().numpy()
-                out_slot_labels_ids = np.append(out_slot_labels_ids, slot_labels_ids.detach().cpu().numpy(), axis=0)
+                # Slot prediction
+                if slot_preds is None:
+                    slot_preds = slot_logits.detach().cpu().numpy()
+                    out_slot_labels_ids = inputs["slot_labels_ids"].detach().cpu().numpy()
+                else:
+                    slot_preds = np.append(slot_preds, slot_logits.detach().cpu().numpy(), axis=0)
+                    out_slot_labels_ids = np.append(out_slot_labels_ids,
+                                                    inputs["slot_labels_ids"].detach().cpu().numpy(), axis=0)
+            else:
+                # Intent prediction
+                if intent_preds is None:
+                    intent_preds = intent_logits.detach().cpu().numpy()
+                    out_intent_label_ids = intent_label_ids.detach().cpu().numpy()
+                else:
+                    intent_preds = np.append(intent_preds, intent_logits.detach().cpu().numpy(), axis=0)
+                    out_intent_label_ids = np.append(
+                        out_intent_label_ids, intent_label_ids.detach().cpu().numpy(), axis=0)
+
+                # Slot prediction
+                if slot_preds is None:
+                    slot_preds = slot_logits.detach().cpu().numpy()
+                    out_slot_labels_ids = slot_labels_ids.detach().cpu().numpy()
+                    out_slot_labels_ids = np.append(out_slot_labels_ids, slot_labels_ids.detach().cpu().numpy(), axis=0)
 
         eval_loss = eval_loss / nb_eval_steps
         results = {"loss": eval_loss}
@@ -380,11 +399,23 @@ class Trainer(object):
         out_slot_label_list = [[] for _ in range(out_slot_labels_ids.shape[0])]
         slot_preds_list = [[] for _ in range(out_slot_labels_ids.shape[0])]
 
-        for i in range(out_slot_labels_ids.shape[0]):
-            for j in range(out_slot_labels_ids.shape[1]):
-                if out_slot_labels_ids[i, j] != self.pad_token_label_id:
-                    out_slot_label_list[i].append(slot_label_map[out_slot_labels_ids[i][j]])
-                    slot_preds_list[i].append(slot_label_map[slot_preds[i][j]])
+        if self.args.stage == '2.0':
+            for i in range(out_slot_labels_ids.shape[0]):
+                for j in range(out_slot_labels_ids.shape[1]):
+                    if out_slot_labels_ids[i, j] != self.pad_token_label_id:
+                        if out_slot_labels_ids[i, j] == 2:
+                            if out_slot_labels_ids[i, j] != slot_preds[i, j]:
+                                out_slot_label_list[i].append(slot_label_map[out_slot_labels_ids[i][j]])
+                                slot_preds_list[i].append(slot_label_map[slot_preds[i][j]])
+                        else:
+                            out_slot_label_list[i].append(slot_label_map[out_slot_labels_ids[i][j]])
+                            slot_preds_list[i].append(slot_label_map[slot_preds[i][j]])
+        else:
+            for i in range(out_slot_labels_ids.shape[0]):
+                for j in range(out_slot_labels_ids.shape[1]):
+                    if out_slot_labels_ids[i, j] != self.pad_token_label_id:
+                        out_slot_label_list[i].append(slot_label_map[out_slot_labels_ids[i][j]])
+                        slot_preds_list[i].append(slot_label_map[slot_preds[i][j]])
 
         total_result = compute_metrics(intent_preds, out_intent_label_ids, slot_preds_list, out_slot_label_list)
         results.update(total_result)
