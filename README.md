@@ -16,7 +16,7 @@ python train.py --teacher_model ./data/models/bert-base-uncased \
 
 ### Intermediate layer distillation
 ```bash
-python train.py --teacher_model ./data/models/bert-base-uncased \
+python train.py --teacher_model ./data/models/snips_teacher \
                 --data_dir ./data \
                 --tinybert ./data/models/tinybert \
                 --output_dir ./data/models/snips_teacher_tmp \

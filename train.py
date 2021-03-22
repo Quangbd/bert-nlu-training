@@ -268,6 +268,8 @@ class Trainer(object):
                         result['att_loss'] = att_loss
                         result['rep_loss'] = rep_loss
                         result['loss'] = loss
+                        for key in sorted(result.keys()):
+                            print("  %s = %s", key, str(result[key]))
 
                         if not self.args.pred_distill:
                             save_model = True
