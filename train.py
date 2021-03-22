@@ -144,7 +144,7 @@ class Trainer(object):
 
                             if save_model:
                                 print("***** Save model *****")
-                                self.save_model()
+                                self.save_model(self.teacher_model)
 
                     if 0 < self.args.max_steps < global_step:
                         epoch_iterator.close()
@@ -288,7 +288,7 @@ class Trainer(object):
 
                         if save_model:
                             logger.info("***** Save model *****")
-                            self.save_model()
+                            self.save_model(self.student_model)
 
                         self.student_model.train()
 
@@ -426,18 +426,18 @@ class Trainer(object):
 
         return results
 
-    def save_model(self):
+    def save_model(self, model):
         # Save model checkpoint (Overwrite)
-        if not os.path.exists(self.args.model_dir):
-            os.makedirs(self.args.model_dir)
-        output_model_file = os.path.join(self.args.model_dir, 'pytorch_model.bin')
-        output_config_file = os.path.join(self.args.model_dir, 'config.json')
-        model_to_save = self.teacher_model.module if hasattr(self.teacher_model, 'module') else self.teacher_model
+        if not os.path.exists(self.args.output_dir):
+            os.makedirs(self.args.output_dir)
+        output_model_file = os.path.join(self.args.output_dir, 'pytorch_model.bin')
+        output_config_file = os.path.join(self.args.output_dir, 'config.json')
+        model_to_save = model.module if hasattr(model, 'module') else model
         torch.save(model_to_save.state_dict(), output_model_file)
         model_to_save.config.to_json_file(output_config_file)
 
         # Save training arguments together with the trained model
-        torch.save(self.args, os.path.join(self.args.model_dir, 'training_args.bin'))
+        torch.save(self.args, os.path.join(self.args.output_dir, 'training_args.bin'))
         print("Saving model checkpoint to %s", self.args.model_dir)
 
     def load_model(self):
