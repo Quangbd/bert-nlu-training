@@ -34,8 +34,7 @@ python train.py --pred_distill  \
                 --student_model ./data/models/snips_student_tmp \
                 --data_dir ./data \
                 --tinybert ./data/models/tinybert \
-                --output_dir ./data/models/snips_student_tmp \
-                --learning_rate 5e-5  \
+                --output_dir ./data/models/snips_student \
                 --num_train_epochs  20  \
                 --eval_step 50 \
                 --max_seq_len 50 \

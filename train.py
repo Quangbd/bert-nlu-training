@@ -525,8 +525,8 @@ if __name__ == '__main__':
     test_dataset = load_and_cache_examples(args, tokenizer, mode="test")
     trainer = Trainer(args, train_dataset, dev_dataset, test_dataset)
 
-    # if args.do_train:
-    #     trainer.train()
+    if args.do_train:
+        trainer.train()
 
     if args.do_eval:
         model = trainer.load_model()
