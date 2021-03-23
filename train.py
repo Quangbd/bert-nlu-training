@@ -326,7 +326,6 @@ class Trainer(object):
                     eval_loss += tmp_eval_loss.mean().item()
                 else:
                     input_ids, input_mask, segment_ids, intent_label_ids, slot_labels_ids = batch
-
                     intent_logits, slot_logits, _, _ = model(input_ids, segment_ids, input_mask)
                     loss_fct = CrossEntropyLoss()
                     slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.args.ignore_index)
@@ -378,8 +377,6 @@ class Trainer(object):
                 if slot_preds is None:
                     slot_preds = slot_logits.detach().cpu().numpy()
                     out_slot_labels_ids = slot_labels_ids.detach().cpu().numpy()
-                    out_slot_labels_ids = np.append(
-                        out_slot_labels_ids, slot_labels_ids.detach().cpu().numpy(), axis=0)
                 else:
                     slot_preds = np.append(slot_preds, slot_logits.detach().cpu().numpy(), axis=0)
                     out_slot_labels_ids = np.append(
@@ -392,8 +389,7 @@ class Trainer(object):
         intent_preds = np.argmax(intent_preds, axis=1)
 
         # Slot result
-        if not self.args.use_crf:
-            slot_preds = np.argmax(slot_preds, axis=2)
+        slot_preds = np.argmax(slot_preds, axis=2)
         slot_label_map = {i: label for i, label in enumerate(self.slot_label_lst)}
         out_slot_label_list = [[] for _ in range(out_slot_labels_ids.shape[0])]
         slot_preds_list = [[] for _ in range(out_slot_labels_ids.shape[0])]
@@ -483,7 +479,7 @@ if __name__ == '__main__':
                         help='The teacher model dir.')
     parser.add_argument('--student_model', default='./data/models/snips_student_tmp', type=str,
                         help='The student model dir.')
-    parser.add_argument('--output_dir', default='./data/models/snips_student', type=str,
+    parser.add_argument('--output_dir', default='./data/models/snips_student_tmp', type=str,
                         help='Path to save, load model')
 
     parser.add_argument('--ignore_index', default=0, type=int,
@@ -511,10 +507,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--intent_label_file', default='intent_label.txt', type=str, help='Intent Label file')
     parser.add_argument('--slot_label_file', default='slot_label.txt', type=str, help='Slot Label file')
-
     parser.add_argument('--slot_loss_coef', type=float, default=1.0, help='Coefficient for the slot loss.')
-
-    parser.add_argument('--use_crf', action='store_true', help='Whether to use CRF')
     parser.add_argument('--slot_pad_label', default='PAD', type=str,
                         help='Pad token for slot label pad (to be ignore when calculate loss)')
     parser.add_argument('--warmup_proportion', default=0.1, type=float,
