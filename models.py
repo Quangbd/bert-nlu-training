@@ -1342,19 +1342,15 @@ class JointBERT(BertPreTrainedModel):
 
         # 2. Slot Softmax
         if slot_labels_ids is not None:
-            if self.args.use_crf:
-                slot_loss = self.crf(slot_logits, slot_labels_ids, mask=attention_mask.byte(), reduction='mean')
-                slot_loss = -1 * slot_loss  # negative log-likelihood
+            slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.args.ignore_index)
+            # Only keep active parts of the loss
+            if attention_mask is not None:
+                active_loss = attention_mask.view(-1) == 1
+                active_logits = slot_logits.view(-1, self.num_slot_labels)[active_loss]
+                active_labels = slot_labels_ids.view(-1)[active_loss]
+                slot_loss = slot_loss_fct(active_logits, active_labels)
             else:
-                slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.args.ignore_index)
-                # Only keep active parts of the loss
-                if attention_mask is not None:
-                    active_loss = attention_mask.view(-1) == 1
-                    active_logits = slot_logits.view(-1, self.num_slot_labels)[active_loss]
-                    active_labels = slot_labels_ids.view(-1)[active_loss]
-                    slot_loss = slot_loss_fct(active_logits, active_labels)
-                else:
-                    slot_loss = slot_loss_fct(slot_logits.view(-1, self.num_slot_labels), slot_labels_ids.view(-1))
+                slot_loss = slot_loss_fct(slot_logits.view(-1, self.num_slot_labels), slot_labels_ids.view(-1))
             total_loss += self.args.slot_loss_coef * slot_loss
 
         outputs = ((intent_logits, slot_logits),)  # add hidden states and attention if they are here
