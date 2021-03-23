@@ -104,8 +104,8 @@ def convert_input_file_to_tensor_dataset(lines,
 
 def predict(pred_config):
     # load model and args
-    args = get_args(pred_config)
-    device = "cuda" if torch.devicecuda.is_available() and not args.no_cuda else "cpu"
+    args = get_args(pred_config.model_dir)
+    device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
     model = load_model(pred_config, args, device)
     logger.info(args)
 
@@ -114,7 +114,7 @@ def predict(pred_config):
 
     # Convert input file to TensorDataset
     pad_token_label_id = args.ignore_index
-    tokenizer = BertTokenizer.from_pretrained('data/models/bert-base-uncased')
+    tokenizer = BertTokenizer.from_pretrained(args.bert_path)
     lines = read_input_file(pred_config)
     dataset = convert_input_file_to_tensor_dataset(lines, args, tokenizer, pad_token_label_id)
 
@@ -140,23 +140,14 @@ def predict(pred_config):
 
             # Slot prediction
             if slot_preds is None:
-                if args.use_crf:
-                    slot_preds = np.array(model.crf.decode(slot_logits))
-                else:
-                    slot_preds = slot_logits.detach().cpu().numpy()
+                slot_preds = slot_logits.detach().cpu().numpy()
                 all_slot_label_mask = batch[3].detach().cpu().numpy()
             else:
-                if args.use_crf:
-                    slot_preds = np.append(slot_preds, np.array(model.crf.decode(slot_logits)), axis=0)
-                else:
-                    slot_preds = np.append(slot_preds, slot_logits.detach().cpu().numpy(), axis=0)
+                slot_preds = np.append(slot_preds, slot_logits.detach().cpu().numpy(), axis=0)
                 all_slot_label_mask = np.append(all_slot_label_mask, batch[3].detach().cpu().numpy(), axis=0)
 
     intent_preds = np.argmax(intent_preds, axis=1)
-
-    if not args.use_crf:
-        slot_preds = np.argmax(slot_preds, axis=2)
-
+    slot_preds = np.argmax(slot_preds, axis=2)
     slot_label_map = {i: label for i, label in enumerate(slot_label_lst)}
     slot_preds_list = [[] for _ in range(slot_preds.shape[0])]
 
@@ -181,8 +172,8 @@ def predict(pred_config):
 
 def predict_single_query(pred_config):
     # load model and args
-    args = get_args(pred_config)
-    device = "cuda" if torch.devicecuda.is_available() and not args.no_cuda else "cpu"
+    args = get_args(pred_config.model_dir)
+    device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
     model = load_model(pred_config, args, device)
     logger.info(args)
 
@@ -191,7 +182,7 @@ def predict_single_query(pred_config):
 
     # Convert input file to TensorDataset
     pad_token_label_id = args.ignore_index
-    tokenizer = BertTokenizer.from_pretrained('data/models/bert-base-uncased')
+    tokenizer = BertTokenizer.from_pretrained(args.bert_path)
     dataset = convert_input_file_to_tensor_dataset([pred_config.input_query.split()], args, tokenizer,
                                                    pad_token_label_id)
     dataset = tuple(t.to(device) for t in dataset)
@@ -233,8 +224,8 @@ if __name__ == "__main__":
     init_logger()
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--input_file", default=None, type=str, help="Input file for prediction")
-    parser.add_argument("--input_query", default='add sabrina salerno to the grime instrumentals playlist', type=str,
+    parser.add_argument("--input_file", default='data/snips/test/seq.in', type=str, help="Input file for prediction")
+    parser.add_argument("--input_query", default=None, type=str,
                         help="Input query for prediction")
     parser.add_argument("--output_file", default="./data/snips/sample_pred_out.txt", type=str,
                         help="Output file for prediction")

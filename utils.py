@@ -8,7 +8,7 @@ from seqeval.metrics import precision_score, recall_score, f1_score
 
 
 def get_args(pred_config):
-    return torch.load(pred_config)
+    return torch.load('{}/training_args.bin'.format(pred_config))
 
 
 def load_model(pred_config, args, device):

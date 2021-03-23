@@ -53,6 +53,5 @@ python predict.py  \
 python predict.py  \
         --input_query "input text" \
         --output_file ${output_file}$ \
-        --model_dir ${OUTPUT_DIR}$ 
-                       
+        --model_dir ${OUTPUT_DIR}$                 
 ```
