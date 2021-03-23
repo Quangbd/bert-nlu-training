@@ -3,7 +3,31 @@ import torch
 import random
 import logging
 import numpy as np
+from models import JointTinyBert2, JointBERT
 from seqeval.metrics import precision_score, recall_score, f1_score
+
+
+def get_args(pred_config):
+    return torch.load(pred_config)
+
+
+def load_model(pred_config, args, device):
+    # Check whether model exists
+    if not os.path.exists(pred_config.model_dir):
+        raise Exception("Model doesn't exists! Train first!")
+
+    try:
+        model = JointTinyBert2.from_pretrained(pred_config.model_dir,
+                                               args=args,
+                                               intent_label_lst=get_intent_labels(args),
+                                               slot_label_lst=get_slot_labels(args))
+        model.to(device)
+        model.eval()
+        print("***** Model Loaded *****")
+    except:
+        raise Exception("Some model files might be missing...")
+
+    return model
 
 
 def init_logger():

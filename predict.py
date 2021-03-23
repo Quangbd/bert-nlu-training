@@ -1,44 +1,13 @@
-import os
+import torch
 import logging
 import argparse
-from tqdm import tqdm
-
 import numpy as np
-import torch
-from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
-from models import JointTinyBert2
+from tqdm import tqdm
 from transformers import BertTokenizer
-
-from utils import init_logger, get_intent_labels, get_slot_labels
+from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
+from utils import init_logger, get_intent_labels, get_slot_labels, get_args, load_model
 
 logger = logging.getLogger(__name__)
-
-
-def get_device(pred_config):
-    return "cuda" if torch.cuda.is_available() and not pred_config.no_cuda else "cpu"
-
-
-def get_args(pred_config):
-    return torch.load('data/models/snips_teacher/training_args.bin')
-
-
-def load_model(pred_config, args, device):
-    # Check whether model exists
-    if not os.path.exists(pred_config.model_dir):
-        raise Exception("Model doesn't exists! Train first!")
-
-    try:
-        model = JointTinyBert2.from_pretrained(pred_config.model_dir,
-                                               args=args,
-                                               intent_label_lst=get_intent_labels(args),
-                                               slot_label_lst=get_slot_labels(args))
-        model.to(device)
-        model.eval()
-        logger.info("***** Model Loaded *****")
-    except:
-        raise Exception("Some model files might be missing...")
-
-    return model
 
 
 def read_input_file(pred_config):
@@ -53,7 +22,6 @@ def read_input_file(pred_config):
 
 
 def convert_input_file_to_tensor_dataset(lines,
-                                         pred_config,
                                          args,
                                          tokenizer,
                                          pad_token_label_id,
@@ -117,12 +85,12 @@ def convert_input_file_to_tensor_dataset(lines,
         all_slot_label_mask.append(slot_label_mask)
 
     # Change to Tensor
-    if len(lines)==1:
+    if len(lines) == 1:
         all_input_ids = torch.tensor(all_input_ids, dtype=torch.long)
         all_attention_mask = torch.tensor(all_attention_mask, dtype=torch.long)
         all_token_type_ids = torch.tensor(all_token_type_ids, dtype=torch.long)
         all_slot_label_mask = torch.tensor(all_slot_label_mask, dtype=torch.long)
-        return all_input_ids,all_attention_mask,all_token_type_ids,all_slot_label_mask
+        return all_input_ids, all_attention_mask, all_token_type_ids, all_slot_label_mask
 
     all_input_ids = torch.tensor(all_input_ids, dtype=torch.long)
     all_attention_mask = torch.tensor(all_attention_mask, dtype=torch.long)
@@ -137,7 +105,7 @@ def convert_input_file_to_tensor_dataset(lines,
 def predict(pred_config):
     # load model and args
     args = get_args(pred_config)
-    device = get_device(pred_config)
+    device = "cuda" if torch.devicecuda.is_available() and not args.no_cuda else "cpu"
     model = load_model(pred_config, args, device)
     logger.info(args)
 
@@ -148,7 +116,7 @@ def predict(pred_config):
     pad_token_label_id = args.ignore_index
     tokenizer = BertTokenizer.from_pretrained('data/models/bert-base-uncased')
     lines = read_input_file(pred_config)
-    dataset = convert_input_file_to_tensor_dataset(lines, pred_config, args, tokenizer, pad_token_label_id)
+    dataset = convert_input_file_to_tensor_dataset(lines, args, tokenizer, pad_token_label_id)
 
     # Predict
     sampler = SequentialSampler(dataset)
@@ -161,7 +129,7 @@ def predict(pred_config):
     for batch in tqdm(data_loader, desc="Predicting"):
         batch = tuple(t.to(device) for t in batch)
         with torch.no_grad():
-            input_ids, input_mask, segment_ids,_ = batch
+            input_ids, input_mask, segment_ids, _ = batch
             intent_logits, slot_logits, _, _ = model(input_ids, segment_ids, input_mask)
 
             # Intent Prediction
@@ -173,7 +141,6 @@ def predict(pred_config):
             # Slot prediction
             if slot_preds is None:
                 if args.use_crf:
-                    # decode() in `torchcrf` returns list with best index directly
                     slot_preds = np.array(model.crf.decode(slot_logits))
                 else:
                     slot_preds = slot_logits.detach().cpu().numpy()
@@ -189,7 +156,6 @@ def predict(pred_config):
 
     if not args.use_crf:
         slot_preds = np.argmax(slot_preds, axis=2)
-
 
     slot_label_map = {i: label for i, label in enumerate(slot_label_lst)}
     slot_preds_list = [[] for _ in range(slot_preds.shape[0])]
@@ -212,10 +178,11 @@ def predict(pred_config):
 
     logger.info("Prediction Done!")
 
+
 def predict_single_query(pred_config):
     # load model and args
     args = get_args(pred_config)
-    device = get_device(pred_config)
+    device = "cuda" if torch.devicecuda.is_available() and not args.no_cuda else "cpu"
     model = load_model(pred_config, args, device)
     logger.info(args)
 
@@ -225,18 +192,12 @@ def predict_single_query(pred_config):
     # Convert input file to TensorDataset
     pad_token_label_id = args.ignore_index
     tokenizer = BertTokenizer.from_pretrained('data/models/bert-base-uncased')
-    dataset = convert_input_file_to_tensor_dataset([pred_config.input_query.split()], pred_config, args, tokenizer, pad_token_label_id)
+    dataset = convert_input_file_to_tensor_dataset([pred_config.input_query.split()], args, tokenizer,
+                                                   pad_token_label_id)
     dataset = tuple(t.to(device) for t in dataset)
 
-
-    input_ids, input_mask, segment_ids,_ = dataset
+    input_ids, input_mask, segment_ids, _ = dataset
     intent_logits, slot_logits, _, _ = model(input_ids, segment_ids, input_mask)
-
-    print(input_ids)
-    print(input_mask)
-    print(segment_ids)
-    print(intent_logits)
-    print(slot_logits)
 
     intent_preds = intent_logits.detach().cpu().numpy()
     slot_preds = slot_logits.detach().cpu().numpy()
@@ -255,7 +216,7 @@ def predict_single_query(pred_config):
 
     # Write to output file
     with open(pred_config.output_file, "w", encoding="utf-8") as f:
-        #for words, slot_preds, intent_pred in zip(lines, slot_preds_list, intent_preds):
+        # for words, slot_preds, intent_pred in zip(lines, slot_preds_list, intent_preds):
         line = ""
         for word, pred in zip(pred_config.input_query.split(), slot_preds_list[0]):
             if pred == 'O':
@@ -273,15 +234,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--input_file", default=None, type=str, help="Input file for prediction")
-    parser.add_argument("--input_query", default='add sabrina salerno to the grime instrumentals playlist', type=str, help="Input query for prediction")
-    parser.add_argument("--output_file", default="sample_pred_out.txt", type=str, help="Output file for prediction")
-    parser.add_argument("--model_dir", default="./data/models/snips_student_2", type=str, help="Path to save, load model")
+    parser.add_argument("--input_query", default='add sabrina salerno to the grime instrumentals playlist', type=str,
+                        help="Input query for prediction")
+    parser.add_argument("--output_file", default="./data/snips/sample_pred_out.txt", type=str,
+                        help="Output file for prediction")
+    parser.add_argument("--model_dir", default="./data/models/snips_student", type=str,
+                        help="Path to save, load model")
 
     parser.add_argument("--batch_size", default=32, type=int, help="Batch size for prediction")
     parser.add_argument("--no_cuda", action="store_true", help="Avoid using CUDA when available")
 
-    pred_config = parser.parse_args()
-    if pred_config.input_file is not None:
-        predict(pred_config)
-    if pred_config.input_query is not None:
-        predict_single_query(pred_config)
+    _pred_config = parser.parse_args()
+    if _pred_config.input_file is not None:
+        predict(_pred_config)
+    if _pred_config.input_query is not None:
+        predict_single_query(_pred_config)

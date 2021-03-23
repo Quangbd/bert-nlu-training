@@ -73,32 +73,6 @@ def get_parse():
     return parser
 
 
-def get_args(pred_config):
-    return torch.load('data/models/snips_teacher/training_args.bin')
-
-
-def get_device(pred_config):
-    return "cuda" if torch.cuda.is_available() and not pred_config.no_cuda else "cpu"
-
-
-def load_model(pred_config, args, device):
-    # Check whether model exists
-    if not os.path.exists(pred_config.model_dir):
-        raise Exception("Model doesn't exists! Train first!")
-
-    try:
-        model = JointTinyBert2.from_pretrained(pred_config.model_dir,
-                                               args=args,
-                                               intent_label_lst=get_intent_labels(args),
-                                               slot_label_lst=get_slot_labels(args))
-        model.to(device)
-        model.eval()
-    except:
-        raise Exception("Some model files might be missing...")
-
-    return model
-
-
 def convert_examples_to_features(text, max_seq_length, tokenizer):
     tokens = tokenizer.tokenize(text)
     tokens = tokens[:max_seq_length-2]

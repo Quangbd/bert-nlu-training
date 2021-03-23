@@ -378,7 +378,12 @@ class Trainer(object):
                 if slot_preds is None:
                     slot_preds = slot_logits.detach().cpu().numpy()
                     out_slot_labels_ids = slot_labels_ids.detach().cpu().numpy()
-                    out_slot_labels_ids = np.append(out_slot_labels_ids, slot_labels_ids.detach().cpu().numpy(), axis=0)
+                    out_slot_labels_ids = np.append(
+                        out_slot_labels_ids, slot_labels_ids.detach().cpu().numpy(), axis=0)
+                else:
+                    slot_preds = np.append(slot_preds, slot_logits.detach().cpu().numpy(), axis=0)
+                    out_slot_labels_ids = np.append(
+                        out_slot_labels_ids, slot_labels_ids.detach().cpu().numpy(), axis=0)
 
         eval_loss = eval_loss / nb_eval_steps
         results = {"loss": eval_loss}
@@ -527,8 +532,8 @@ if __name__ == '__main__':
     test_dataset = load_and_cache_examples(args, tokenizer, mode="test")
     trainer = Trainer(args, train_dataset, dev_dataset, test_dataset)
 
-    if args.do_train:
-        trainer.train()
+    # if args.do_train:
+    #     trainer.train()
 
     if args.do_eval:
         model = trainer.load_model()
