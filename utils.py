@@ -7,17 +7,17 @@ from models import JointTinyBert2, JointBERT
 from seqeval.metrics import precision_score, recall_score, f1_score
 
 
-def get_args(pred_config):
-    return torch.load('{}/training_args.bin'.format(pred_config))
+def get_args(model_dir):
+    return torch.load('{}/training_args.bin'.format(model_dir))
 
 
-def load_model(pred_config, args, device):
+def load_model(model_dir, args, device):
     # Check whether model exists
-    if not os.path.exists(pred_config.model_dir):
+    if not os.path.exists(model_dir):
         raise Exception("Model doesn't exists! Train first!")
 
     try:
-        model = JointTinyBert2.from_pretrained(pred_config.model_dir,
+        model = JointTinyBert2.from_pretrained(model_dir,
                                                args=args,
                                                intent_label_lst=get_intent_labels(args),
                                                slot_label_lst=get_slot_labels(args))

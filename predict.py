@@ -106,7 +106,7 @@ def predict(pred_config):
     # load model and args
     args = get_args(pred_config.model_dir)
     device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
-    model = load_model(pred_config, args, device)
+    model = load_model(pred_config.model_dir, args, device)
     logger.info(args)
 
     intent_label_lst = get_intent_labels(args)
@@ -174,7 +174,7 @@ def predict_single_query(pred_config):
     # load model and args
     args = get_args(pred_config.model_dir)
     device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
-    model = load_model(pred_config, args, device)
+    model = load_model(pred_config.model_dir, args, device)
     logger.info(args)
 
     intent_label_lst = get_intent_labels(args)
