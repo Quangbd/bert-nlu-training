@@ -456,7 +456,7 @@ class Trainer(object):
                                                                     slot_label_lst=self.slot_label_lst)
                 self.student_model.to(self.device)
                 logger.info("***** Model Loaded *****")
-                return self.teacher_model
+                return self.student_model
         except:
             raise Exception("Some model files might be missing...")
 
