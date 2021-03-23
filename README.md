@@ -41,17 +41,43 @@ python train.py --pred_distill  \
                 --train_batch_size 8 \
                 --stage 2.2
 ```
-- Step 6: use `predict.py` to run the prediction layer distillation.
-```
-# predict with input from file
+
+## Prediction
+
+- predict with input from file
+```bash
+# Predict with input from file
 python predict.py  \
                 --input_file ${input_txt_file}$ \
                 --output_file ${output_file}$ \
-                --model_dir ${OUTPUT_DIR}$ 
+                --model_dir ${OUTPUT_DIR}$
+``` 
 
-# predict with input from file
+- Predict with input from file
+```bash
 python predict.py  \
         --input_query "input text" \
         --output_file ${output_file}$ \
         --model_dir ${OUTPUT_DIR}$                 
 ```
+
+## Convert to the tflite model
+
+```bash
+python convert.py \
+      --model_dir ./data/models/snips_student \
+      --convert_dir ./data/models/snips_convert
+```
+
+## Results
+
+Results on test set
+
+| Data   | Model         | Intent acc (%) | Slot F1 (%) |
+|--------| --------------|----------------|-------------|
+| Snips  | BERT          |      98.57     |    96.19    |
+|        | TinyBERT      |      98.14     |    93.36    |
+|        | Tflite        |      98.14     |    93.23    |
+| Atis   | BERT          |                |             |
+|        | TinyBERT      |                |             |
+|        | Tflite        |                |             |

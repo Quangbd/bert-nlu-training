@@ -122,11 +122,9 @@ def test_tflite(args, tokenizer, model_path):
 if __name__ == '__main__':
     init_logger()
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_file', default='./data/snips/test/seq.in', type=str, help='Input file for prediction')
     parser.add_argument('--model_dir', default='./data/models/snips_student', type=str, help='Path to save, load model')
     parser.add_argument('--data_dir', default='./data', type=str, help='The input data dir')
     parser.add_argument('--convert_dir', default='./data/models/snips_convert', type=str)
-    parser.add_argument('--batch_size', default=32, type=int, help='Batch size for prediction')
     parser.add_argument('--max_seq_len', default=50, type=int, help='Batch size for prediction')
     parser.add_argument('--sample', default='make a reservation at a bakery that has '
                                             'acquacotta in central african republic for five', type=str)
