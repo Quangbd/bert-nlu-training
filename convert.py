@@ -35,8 +35,14 @@ def torch_to_onnx(sample, max_seq_len, model, tokenizer, output_path):
     input_names = ["input_ids", 'token_type_ids', 'attention_mask']
     output_names = ["output", "output2"]
     dummy_input = (input_ids, segment_ids, input_mask)
-    torch.onnx.export(model, dummy_input, output_path, input_names=input_names,
-                      output_names=output_names, verbose=False, export_params=True)
+    net = torch.jit.load('data/models/snips_convert/model.pt')
+    test = net(input_ids, segment_ids, input_mask)
+    print(test)
+    # traced_script_module = torch.jit.trace(model, dummy_input)
+    # test = traced_script_module(input_ids, segment_ids, input_mask)
+    # traced_script_module.save('data/models/snips_convert/model.pt')
+    # torch.onnx.export(model, dummy_input, output_path, input_names=input_names,
+    #                   output_names=output_names, verbose=False, export_params=True)
 
 
 def saved_model_to_tflite(input_path, output_path):
@@ -126,12 +132,13 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', default='./data', type=str, help='The input data dir')
     parser.add_argument('--convert_dir', default='./data/models/snips_convert', type=str)
     parser.add_argument('--max_seq_len', default=50, type=int, help='Batch size for prediction')
-    parser.add_argument('--sample', default='make a reservation at a bakery that has '
-                                            'acquacotta in central african republic for five', type=str)
+    parser.add_argument('--sample', default='add sabrina salerno to the grime instrumentals playlist', type=str)
     convert_config = parser.parse_args()
     _args = get_args(convert_config.model_dir)
 
     _model = load_model(convert_config.model_dir, _args, "cpu")
+
+
     _tokenizer = BertTokenizer.from_pretrained('data/models/bert-base-uncased', do_lower_case=True)
 
     convert_dir = convert_config.convert_dir
@@ -140,12 +147,12 @@ if __name__ == '__main__':
     onnx_path = os.path.join(convert_dir, 'model.onnx')
     torch_to_onnx(convert_config.sample, convert_config.max_seq_len, _model, _tokenizer, onnx_path)
 
-    # pip install git+https://github.com/onnx/onnx-tensorflow.git
-    # onnx-tf convert -i "model.onnx" -o  "saved_model"
-    saved_model_path = os.path.join(convert_dir, 'saved_model')
-    convert(onnx_path, saved_model_path)
+    # # pip install git+https://github.com/onnx/onnx-tensorflow.git
+    # # onnx-tf convert -i "model.onnx" -o  "saved_model"
+    # saved_model_path = os.path.join(convert_dir, 'saved_model')
+    # convert(onnx_path, saved_model_path)
+    #
+    # tflite_path = os.path.join(convert_dir, 'model.tflite')
+    # saved_model_to_tflite(saved_model_path, tflite_path)
 
-    tflite_path = os.path.join(convert_dir, 'model.tflite')
-    saved_model_to_tflite(saved_model_path, tflite_path)
-
-    test_tflite(_args, _tokenizer, tflite_path)
+    # test_tflite(_args, _tokenizer, tflite_path)

@@ -225,7 +225,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--input_file", default='data/snips/test/seq.in', type=str, help="Input file for prediction")
-    parser.add_argument("--input_query", default=None, type=str,
+    parser.add_argument("--input_query", default='add sabrina salerno to the grime instrumentals playlist', type=str,
                         help="Input query for prediction")
     parser.add_argument("--output_file", default="./data/snips/sample_pred_out.txt", type=str,
                         help="Output file for prediction")
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     parser.add_argument("--no_cuda", action="store_true", help="Avoid using CUDA when available")
 
     _pred_config = parser.parse_args()
-    if _pred_config.input_file is not None:
-        predict(_pred_config)
+    # if _pred_config.input_file is not None:
+    #     predict(_pred_config)
     if _pred_config.input_query is not None:
         predict_single_query(_pred_config)
